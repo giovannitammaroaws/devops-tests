@@ -1,0 +1,32 @@
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.27.2
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.37.0
+    hooks:
+      - id: yamllint
+        args: [--strict]
+
+  - repo: https://github.com/bridgecrewio/checkov
+    rev: 3.2.431
+    hooks:
+      - id: checkov
+        args: [--directory, .]
+
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.13.1-beta
+    hooks:
+      - id: hadolint
+        name: Lint Dockerfiles
+
+  - repo: local
+    hooks:
+      - id: trivy
+        name: Trivy misconfiguration scan
+        language: system
+        entry: trivy
+        args: [fs, --scanners, misconfig, --exit-code, "1", --severity, HIGH,CRITICAL, .]
+        pass_filenames: false

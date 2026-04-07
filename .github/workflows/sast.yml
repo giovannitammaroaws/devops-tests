@@ -1,0 +1,39 @@
+name: SAST
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  hadolint:
+    name: Lint Dockerfiles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          recursive: true
+          failure-threshold: warning
+
+  trivy:
+    name: Trivy misconfiguration scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: fs
+          scanners: misconfig
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          format: table
