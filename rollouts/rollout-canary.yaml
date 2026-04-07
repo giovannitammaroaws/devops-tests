@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: myapp-rollout
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: myapp-rollout
+  template:
+    metadata:
+      labels:
+        app: myapp-rollout
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.25
+          ports:
+            - containerPort: 80
+  strategy:
+    canary:
+      steps:
+        - setWeight: 25   # 25% traffico alla nuova versione
+        - pause: {}       # pausa manuale per approvare
+        - setWeight: 50
+        - pause: {duration: 30s}
+        - setWeight: 100
