@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: myapp-rollout
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: myapp-rollout
+  template:
+    metadata:
+      labels:
+        app: myapp-rollout
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+  strategy:
+    canary:
+      stableService: myapp-stable
+      canaryService: myapp-canary
+      analysis:
+        templates:
+          - templateName: nginx-canary-analysis
+        startingStep: 1
+      steps:
+        - setWeight: 25        # Step 1: 25% traffic to new version (1 out of 4 pods)
+        - pause: {}            # Step 2: manual pause - you decide when to promote
+        - setWeight: 50        # Step 3: 50% traffic to new version (2 out of 4 pods)
+        - pause: {duration: 30s} # Step 4: automatic pause 30 seconds
+        - setWeight: 75        # Step 5: 75% traffic to new version (3 out of 4 pods)
+        - pause: {duration: 30s} # Step 6: automatic pause 30 seconds
+        - setWeight: 100       # Step 7: 100% traffic to new version - rollout complete

@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: nginx-canary-analysis
+spec:
+  metrics:
+    - name: cpu-usage
+      # Check that canary pods CPU does not exceed 80% of the limit
+      interval: 30s
+      failureLimit: 3
+      successCondition: result[0] < 0.8
+      provider:
+        prometheus:
+          address: http://prometheus-server.monitoring.svc.cluster.local
+          query: |
+            sum(rate(container_cpu_usage_seconds_total{
+              namespace="default",
+              pod=~"myapp-rollout-.*",
+              container="nginx"
+            }[2m]))
+
+    - name: memory-usage
+      # Check that canary pods memory does not exceed 200Mi
+      interval: 30s
+      failureLimit: 3
+      successCondition: result[0] < 209715200
+      provider:
+        prometheus:
+          address: http://prometheus-server.monitoring.svc.cluster.local
+          query: |
+            sum(container_memory_working_set_bytes{
+              namespace="default",
+              pod=~"myapp-rollout-.*",
+              container="nginx"
+            })
