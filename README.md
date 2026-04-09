@@ -13,6 +13,7 @@ Lab stack:
 2. Incident 2: Pods are `Running` but the app is not reachable from outside.
 3. Incident 3: Ingress is broken (wrong backend service name or backend service port).
 4. Incident 4: Ingress class mismatch (`ingressClassName` does not match the active controller).
+5. Incident 5: NetworkPolicy blocks traffic to app pods (`502 Bad Gateway` from Ingress).
 
 ## Incident 1 (Pods not Ready / not starting)
 Start here when pods are in states like `Pending`, `ImagePullBackOff`, `CrashLoopBackOff`, `Error`.
@@ -73,6 +74,43 @@ Important note:
 Fix:
 - set `ingressClassName: traefik` in `ingress/myapp-ing.yaml`
 - re-apply the manifest
+
+## Incident 5 (NetworkPolicy Blocking Pod Traffic)
+Use this when Ingress exists and routes, but backend traffic to pods is blocked by policy.
+
+Quick checks:
+```powershell
+k get netpol
+curl.exe -i -H "Host: myapp.local" http://localhost:8080
+```
+
+Example from this lab:
+```text
+NAME                  POD-SELECTOR   AGE
+allow-http-to-myapp   app=myapp      71s
+deny-all-to-myapp     app=myapp      5m4s
+```
+
+Typical symptom:
+- request returns `HTTP/1.1 502 Bad Gateway`
+
+Files used in this lab:
+- `networkpolicy/deny-myapp.yaml`
+- `networkpolicy/allow-http-myapp.yaml`
+
+Commands used:
+```powershell
+k apply -f .\networkpolicy\deny-myapp.yaml
+k apply -f .\networkpolicy\allow-http-myapp.yaml
+k get netpol
+curl.exe -i -H "Host: myapp.local" http://localhost:8080
+```
+
+Recovery shortcut:
+```powershell
+k delete netpol deny-all-to-myapp
+curl.exe -i -H "Host: myapp.local" http://localhost:8080
+```
 
 ## Traffic flow
 `Client -> localhost:8080 -> k3d loadbalancer -> Ingress -> Service -> Pod`

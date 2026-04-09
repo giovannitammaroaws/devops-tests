@@ -176,3 +176,93 @@ curl.exe -i -H "Host: myapp.local" http://localhost:8080
 ### Exit criteria
 - Ingress backend points to `myapp-stable:80`
 - Request returns `HTTP/1.1 200 OK`
+
+---
+
+## Incident 4: Ingress class mismatch
+
+### Symptoms
+- Ingress resource exists
+- Pods and service endpoints are healthy
+- Request still fails (`404` in this lab)
+
+### Triage commands
+```powershell
+k get ingressclass
+k get ing myapp-ing -o jsonpath="{.spec.ingressClassName}{'\n'}"
+k get ing myapp-ing -o yaml
+curl.exe -i -H "Host: myapp.local" http://localhost:8080
+```
+
+### What to look for
+- Existing class in cluster (this lab): `traefik`
+- Ingress class in resource (bad example): `traefik123`
+
+### Fix
+```powershell
+k patch ing myapp-ing --type=merge -p '{"spec":{"ingressClassName":"traefik"}}'
+k get ing myapp-ing -o jsonpath="{.spec.ingressClassName}{'\n'}"
+curl.exe -i -H "Host: myapp.local" http://localhost:8080
+```
+
+### Exit criteria
+- `ingressClassName` matches active controller
+- Request returns `HTTP/1.1 200 OK`
+
+---
+
+## Incident 5: NetworkPolicy blocks traffic to app pods
+
+### Symptoms
+- Pods are `Running`
+- Service endpoints are populated
+- Request returns `HTTP/1.1 502 Bad Gateway`
+
+### Triage commands
+```powershell
+k get netpol
+k get po -l app=myapp -o wide
+k get ep myapp-stable -o wide
+curl.exe -i -H "Host: myapp.local" http://localhost:8080
+```
+
+Example from this lab:
+```text
+NAME                  POD-SELECTOR   AGE
+allow-http-to-myapp   app=myapp      71s
+deny-all-to-myapp     app=myapp      5m4s
+```
+
+### Root cause seen in this lab
+- `deny-all-to-myapp` blocked all ingress traffic to pods with label `app=myapp`.
+- Ingress reached Traefik, but Traefik could not reach backend pods.
+
+### Commands used in this lab
+Apply deny policy:
+```powershell
+k apply -f .\networkpolicy\deny-myapp.yaml
+curl.exe -i -H "Host: myapp.local" http://localhost:8080
+```
+
+Apply allow policy:
+```powershell
+k apply -f .\networkpolicy\allow-http-myapp.yaml
+k get netpol
+curl.exe -i -H "Host: myapp.local" http://localhost:8080
+```
+
+Fast recovery:
+```powershell
+k delete netpol deny-all-to-myapp
+curl.exe -i -H "Host: myapp.local" http://localhost:8080
+```
+
+Full reset (lab mode):
+```powershell
+k delete netpol --all -n default
+curl.exe -i -H "Host: myapp.local" http://localhost:8080
+```
+
+### Exit criteria
+- `curl` returns `HTTP/1.1 200 OK`
+- Policy set matches intended access model
