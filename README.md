@@ -22,11 +22,6 @@ Normal path:
 Client -> k3d LB -> Ingress -> Service -> Pod
 ```
 
-Incident 3 focus (Ingress to Service):
-```text
-Client -> k3d LB -> Ingress -> ❌ Service (wrong backend name/port)
-```
-
 ```mermaid
 flowchart LR
   C[Client] --> LB[k3d Load Balancer :8080]
@@ -35,47 +30,11 @@ flowchart LR
   S --> P[Pods app=myapp]
 ```
 
-```mermaid
-flowchart LR
-  C[Client] --> LB[k3d Load Balancer :8080]
-  LB --> I[Ingress Traefik]
-  I --> X[❌ Wrong service name or port]
-  X -. no healthy backend .-> P[Pods are Running]
-```
-
-## Incident visual snapshots
-Incident 1 (Pods not Ready / not starting):
-```text
-Client -> k3d LB -> Ingress -> Service -> ❌ Pod (ImagePullBackOff / CrashLoopBackOff / NotReady)
-```
-
-Incident 2 (Pods Running, app unreachable):
-```text
-Client -> k3d LB -> Ingress -> Service -> ❌ Endpoints <none> (selector mismatch)
-```
-
-Incident 3 (Broken Ingress backend):
-```text
-Client -> k3d LB -> Ingress -> ❌ Service ref (wrong backend name/port)
-```
-
-Incident 4 (Ingress class mismatch):
-```text
-Client -> k3d LB -> ❌ Ingress not handled by active controller (wrong ingressClassName)
-```
-
-Incident 5 (NetworkPolicy ingress block):
-```text
-Client -> k3d LB -> Ingress -> Service -> ❌ Pod blocked by NetworkPolicy (502 Bad Gateway)
-```
-
-Incident 6 (NetworkPolicy egress block):
-```text
-Pod (app=myapp) -> ❌ Outbound traffic blocked (deny all egress)
-Pod (app=myapp) -> DNS 53 (allowed) + HTTPS 443 (allowed) after allow policies
-```
-
 ## Incident 1 (Pods not Ready / not starting)
+```text
+Flow break: Client -> k3d LB -> Ingress -> Service -> X Pod (ImagePullBackOff / CrashLoopBackOff / NotReady)
+```
+
 Start here when pods are in states like `Pending`, `ImagePullBackOff`, `CrashLoopBackOff`, `Error`.
 
 ```powershell
@@ -90,6 +49,10 @@ Tip:
 - If pods are not `Ready`, services can still show empty endpoints.
 
 ## Incident 2 (Pods Running, app unreachable)
+```text
+Flow break: Client -> k3d LB -> Ingress -> Service -> X Endpoints <none> (selector mismatch)
+```
+
 Use this when pods look healthy but external requests fail (`404`, `503`, timeout).
 
 ```powershell
@@ -102,6 +65,18 @@ docker ps --filter "name=k3d-sim-alb-serverlb" --format "table {{.Names}}`t{{.Po
 ```
 
 ## Incident 3 (Broken Ingress)
+```text
+Flow break: Client -> k3d LB -> Ingress -> X Service ref (wrong backend name/port)
+```
+
+```mermaid
+flowchart LR
+  C[Client] --> LB[k3d Load Balancer :8080]
+  LB --> I[Ingress Traefik]
+  I --> X[Wrong service name or port]
+  X -. no healthy backend .-> P[Pods are Running]
+```
+
 Use this when pods and service look healthy, but routing through Ingress fails.
 
 Common causes covered in this lab:
@@ -109,6 +84,10 @@ Common causes covered in this lab:
 - wrong backend service port in Ingress (for example `81` instead of `80`)
 
 ## Incident 4 (Ingress Class Mismatch)
+```text
+Flow break: Client -> k3d LB -> X Ingress not handled by active controller (wrong ingressClassName)
+```
+
 Use this when Ingress exists but is not processed by the expected controller.
 
 Example:
@@ -136,6 +115,10 @@ Fix:
 - re-apply the manifest
 
 ## Incident 5 (NetworkPolicy Blocking Pod Traffic)
+```text
+Flow break: Client -> k3d LB -> Ingress -> Service -> X Pod traffic blocked by NetworkPolicy (502 Bad Gateway)
+```
+
 Use this when Ingress exists and routes, but backend traffic to pods is blocked by policy.
 
 Quick checks:
@@ -173,6 +156,10 @@ curl.exe -i -H "Host: myapp.local" http://localhost:8080
 ```
 
 ## Incident 6 (Egress Policy Layering)
+```text
+Flow break: Pod (app=myapp) -> X outbound egress blocked (deny all baseline)
+```
+
 Use this to test outbound traffic control for pods with label `app=myapp`.
 
 Key concept:
@@ -297,3 +284,4 @@ Fix file:
 
 ## Full runbook
 See `INCIDENT.md` for the full numbered runbook with decision steps and fixes.
+
