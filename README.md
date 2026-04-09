@@ -14,6 +14,7 @@ Lab stack:
 3. Incident 3: Ingress is broken (wrong backend service name or backend service port).
 4. Incident 4: Ingress class mismatch (`ingressClassName` does not match the active controller).
 5. Incident 5: NetworkPolicy blocks traffic to app pods (`502 Bad Gateway` from Ingress).
+6. Incident 6: Egress policy layering (deny all + selective allow rules).
 
 ## Incident 1 (Pods not Ready / not starting)
 Start here when pods are in states like `Pending`, `ImagePullBackOff`, `CrashLoopBackOff`, `Error`.
@@ -111,6 +112,24 @@ Recovery shortcut:
 k delete netpol deny-all-to-myapp
 curl.exe -i -H "Host: myapp.local" http://localhost:8080
 ```
+
+## Incident 6 (Egress Policy Layering)
+Use this to test outbound traffic control for pods with label `app=myapp`.
+
+Key concept:
+- NetworkPolicy rules are additive (union model), not sequential overrides.
+- `deny-all-egress` sets the baseline (block all egress).
+- `allow-dns` opens only DNS (`53/udp` and `53/tcp`).
+- `allow-https` opens only HTTPS (`443/tcp`).
+
+Final result for `app=myapp`:
+- Allowed: DNS (`53/udp`, `53/tcp`) and HTTPS (`443/tcp`).
+- Blocked: everything else.
+
+Files used in this lab:
+- `incidents/incident-06-egress/01-deny-all-egress-myapp.yaml`
+- `incidents/incident-06-egress/02-allow-dns-egress-myapp.yaml`
+- `incidents/incident-06-egress/03-allow-https-egress-myapp.yaml`
 
 ## CI Note: Trivy Misconfig Failure and Fix
 Trivy failed in CI on `deployments/deployment.yaml` with:
