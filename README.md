@@ -127,9 +127,58 @@ Final result for `app=myapp`:
 - Blocked: everything else.
 
 Files used in this lab:
-- `incidents/incident-06-egress/01-deny-all-egress-myapp.yaml`
-- `incidents/incident-06-egress/02-allow-dns-egress-myapp.yaml`
-- `incidents/incident-06-egress/03-allow-https-egress-myapp.yaml`
+- `networkpolicy/deny-all-egress-myapp.yaml`
+- `networkpolicy/allow-dns-egress-myapp.yaml`
+- `networkpolicy/allow-https-egress-myapp.yaml`
+
+Step-by-step execution (real test flow):
+1. Start clean:
+```powershell
+k delete netpol deny-all-egress-myapp allow-dns-egress-myapp allow-https-egress-myapp
+```
+2. Apply only deny-all egress:
+```powershell
+k apply -f .\networkpolicy\deny-all-egress-myapp.yaml
+k run -it --rm dns-debug --image=busybox:1.36 --restart=Never --labels app=myapp -- sh
+```
+3. Test inside pod (expected fail):
+```sh
+nslookup google.com
+```
+Expected output pattern:
+```text
+nslookup: write to '10.43.0.10': Connection refused
+;; connection timed out; no servers could be reached
+```
+4. Apply DNS allow and retest:
+```powershell
+k apply -f .\networkpolicy\allow-dns-egress-myapp.yaml
+k run -it --rm dns-debug --image=busybox:1.36 --restart=Never --labels app=myapp -- sh
+```
+Inside pod:
+```sh
+nslookup google.com
+wget -T 5 -qO- https://example.com
+```
+Expected:
+- `nslookup` works
+- `https` still blocked
+
+5. Apply HTTPS allow and retest:
+```powershell
+k apply -f .\networkpolicy\allow-https-egress-myapp.yaml
+k run -it --rm dns-debug --image=busybox:1.36 --restart=Never --labels app=myapp -- sh
+```
+Inside pod:
+```sh
+nslookup google.com
+wget -T 5 -qO- https://example.com
+wget -T 5 -qO- http://example.com
+```
+Expected:
+- DNS works
+- HTTPS works
+- HTTP (port 80) remains blocked
 
 ## CI Note: Trivy Misconfig Failure and Fix
 Trivy failed in CI on `deployments/deployment.yaml` with:
