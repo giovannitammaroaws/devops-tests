@@ -8,6 +8,84 @@ Lab stack:
 - Traefik Ingress controller
 - `nginx` app
 
+## Local UIs and port usage
+Use these URLs while running the lab:
+
+| Component | URL | Notes |
+| --- | --- | --- |
+| k3d LoadBalancer / Traefik path | `http://localhost:8080` | Reserved by k3d `serverlb` (`80 -> 8080`) |
+| Istio ingress test path | `http://localhost:18080` | Via `kubectl port-forward` to Istio ingress |
+| Argo CD UI | `https://localhost:8081/` | Kept on `8081` because `8080` is already used by k3d LB |
+| Argo Rollouts dashboard | `http://localhost:3100/rollouts` | `kubectl argo rollouts dashboard` |
+| Kiali UI | `http://localhost:20001/kiali` | `istioctl dashboard kiali` |
+| Grafana UI | `http://localhost:3000` | via port-forward |
+| Prometheus UI | `http://localhost:9090` | via port-forward |
+
+Important:
+- Even if you are not actively using Traefik, `localhost:8080` remains occupied by the k3d load balancer mapping.
+- To reuse `8080` for another UI, you must recreate the cluster with a different LB port mapping.
+
+## Istio + Kiali (what we did in this lab)
+This is the exact Istio/Kiali flow used during the session.
+
+1. Enable sidecar injection on `default` namespace and restart app pods:
+```powershell
+kubectl label ns default istio-injection=enabled --overwrite
+kubectl rollout restart deploy/myapp-deployment
+kubectl rollout status deploy/myapp-deployment
+kubectl get po -l app=myapp
+```
+Expected:
+- pods for `myapp-deployment` become `2/2` (`nginx` + `istio-proxy`)
+
+2. Apply Istio routing objects:
+```powershell
+k apply -f .\istio\myapp-gateway.yaml
+k apply -f .\istio\myapp-vs-good.yaml
+```
+
+3. Port-forward Istio ingress and open Kiali:
+```powershell
+kubectl port-forward -n istio-system svc/istio-ingress 18080:80
+istioctl dashboard kiali
+```
+
+4. Generate continuous traffic (PowerShell):
+```powershell
+while ($true) { curl.exe -s -o NUL -H "Host: myapp.local" http://localhost:18080; Start-Sleep -Milliseconds 200 }
+```
+
+5. Validate path with Istio endpoint:
+```powershell
+curl.exe -i -H "Host: myapp.local" http://localhost:18080
+```
+
+6. Simulate breakage and observe in Kiali:
+- break `Service` selector (set wrong label in `services/myapp-stable.yaml`)
+- apply change
+```powershell
+k apply -f .\services\myapp-stable.yaml
+k get ep myapp-stable
+curl.exe -i -H "Host: myapp.local" http://localhost:18080
+```
+Expected:
+- `k get ep myapp-stable` returns `<none>`
+- curl returns `503 Service Unavailable` with `no healthy upstream`
+- in Kiali Traffic Graph, edge `istio-ingress -> myapp-stable` turns red with error rate
+
+7. Recover:
+- restore correct selector (`app: myapp`) in `services/myapp-stable.yaml`
+- re-apply and verify
+```powershell
+k apply -f .\services\myapp-stable.yaml
+k get ep myapp-stable
+curl.exe -i -H "Host: myapp.local" http://localhost:18080
+```
+Expected:
+- endpoints repopulate
+- curl returns `200`
+- Kiali graph becomes green again (usually after a short refresh window)
+
 ## Incident index
 1. Incident 1: Pods are not `Ready` or do not start.
 2. Incident 2: Pods are `Running` but the app is not reachable from outside.
