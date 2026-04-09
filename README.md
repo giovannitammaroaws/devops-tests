@@ -61,6 +61,15 @@ k get ing myapp-ing -o yaml
 curl.exe -i -H "Host: myapp.local" http://localhost:8080
 ```
 
+Realtime steps:
+1. Run `k get ingressclass` and confirm the active class is `traefik`.
+2. Check `ingressClassName` in `myapp-ing`.
+3. If class is wrong (for example `nginx`), requests will fail even if pods and service are healthy.
+
+Important note:
+- `PARAMETERS: <none>` in `k get ingressclass` is normal for this Traefik setup.
+- Treat class name/controller mismatch as the real issue, not `PARAMETERS: <none>`.
+
 Fix:
 - set `ingressClassName: traefik` in `ingress/myapp-ing.yaml`
 - re-apply the manifest
