@@ -1,6 +1,7 @@
+---
 name: SAST
 
-on:
+"on":
   push:
     branches: ["**"]
   pull_request:
@@ -44,11 +45,14 @@ jobs:
 
       - name: Run Checkov (Kubernetes baseline for this lab)
         run: |
+          SKIP_CHECKS="CKV_K8S_21,CKV_K8S_40,CKV_K8S_43,CKV_K8S_10,\
+          CKV_K8S_11,CKV_K8S_12,CKV_K8S_13,CKV_K8S_8,\
+          CKV_K8S_9,CKV_K8S_15,CKV_K8S_38,CKV_K8S_25"
           checkov \
             --directory . \
             --framework kubernetes \
             --quiet \
-            --skip-check CKV_K8S_21,CKV_K8S_40,CKV_K8S_43,CKV_K8S_10,CKV_K8S_11,CKV_K8S_12,CKV_K8S_13,CKV_K8S_8,CKV_K8S_9,CKV_K8S_15,CKV_K8S_38,CKV_K8S_25
+            --skip-check "$SKIP_CHECKS"
 
   hadolint:
     name: Lint Dockerfiles
@@ -61,7 +65,9 @@ jobs:
         id: dockerfiles
         shell: bash
         run: |
-          if find . -type f \( -name "Dockerfile" -o -name "Dockerfile.*" -o -name "*.Dockerfile" \) | grep -q .; then
+          if find . -type f \
+            \( -name "Dockerfile" -o -name "Dockerfile.*" \
+            -o -name "*.Dockerfile" \) | grep -q .; then
             echo "found=true" >> "$GITHUB_OUTPUT"
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
