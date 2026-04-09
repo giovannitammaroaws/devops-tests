@@ -57,6 +57,22 @@ docker ps --filter "name=k3d-sim-alb-serverlb" --format "table {{.Names}}`t{{.Po
 - If request does not reach at all:
   - check LB port mapping and local network path
 
+### In-cluster DNS/service test (recommended)
+Run this from a temporary pod to validate service DNS and HTTP connectivity:
+```powershell
+k run -it --rm dns-test --image=busybox:1.36 --restart=Never -- sh
+```
+
+Inside the pod:
+```sh
+nslookup myapp-stable
+wget -qO- http://myapp-stable
+```
+
+Notes:
+- do this test from a pod, not from a k3d node container
+- busybox may print extra `NXDOMAIN` lines for alternative suffix attempts; resolution is valid if `myapp-stable.default.svc.cluster.local` is returned
+
 ### Root cause seen in this lab
 - `Service/myapp-stable` selector was wrong:
   - `app: wrong-label`

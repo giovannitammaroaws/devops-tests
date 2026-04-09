@@ -115,6 +115,24 @@ curl.exe -i -H "Host: myapp.local" http://localhost:8080
 ## Traffic flow
 `Client -> localhost:8080 -> k3d loadbalancer -> Ingress -> Service -> Pod`
 
+## In-cluster DNS test (from Pod, not from Node)
+Use this to validate Kubernetes service discovery and internal service reachability.
+
+Run from a temporary pod:
+```powershell
+k run -it --rm dns-test --image=busybox:1.36 --restart=Never -- sh
+```
+
+Inside the pod:
+```sh
+nslookup myapp-stable
+wget -qO- http://myapp-stable
+```
+
+Important:
+- run DNS/service tests from a pod, not from a k3d node container
+- partial `NXDOMAIN` lines from busybox `nslookup` are normal if the fully-qualified service name resolves successfully
+
 ## Known root cause from this lab
 - Wrong service selector (`app: wrong-label`) caused:
   - `Endpoints <none>`
