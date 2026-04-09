@@ -1,0 +1,16 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: myapp-vs
+  namespace: default
+spec:
+  hosts:
+    - myapp.local
+  gateways:
+    - myapp-gw
+  http:
+    - route:
+        - destination:
+            host: myapp-stable
+            port:
+              number: 80
