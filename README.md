@@ -25,6 +25,39 @@ Important:
 - Even if you are not actively using Traefik, `localhost:8080` remains occupied by the k3d load balancer mapping.
 - To reuse `8080` for another UI, you must recreate the cluster with a different LB port mapping.
 
+## Port-forward commands (copy/paste)
+Open one terminal per command:
+
+```powershell
+# Istio ingress test path (curl with Host header on localhost:18080)
+kubectl -n istio-system port-forward svc/istio-ingressgateway 18080:80
+```
+
+```powershell
+# Argo CD UI (https://localhost:8081/)
+kubectl -n argocd port-forward svc/argocd-server 8081:443
+```
+
+```powershell
+# Kiali UI (http://localhost:20001/kiali)
+istioctl dashboard kiali
+```
+
+```powershell
+# Grafana UI (http://localhost:3000)
+kubectl -n monitoring port-forward svc/grafana 3000:80
+```
+
+```powershell
+# Prometheus UI (http://localhost:9090)
+kubectl -n monitoring port-forward svc/prometheus-server 9090:80
+```
+
+```powershell
+# Argo Rollouts dashboard (http://localhost:3100/rollouts)
+kubectl argo rollouts dashboard --port 3100
+```
+
 ## Istio + Kiali (what we did in this lab)
 This is the exact Istio/Kiali flow used during the session.
 
@@ -46,7 +79,7 @@ k apply -f .\istio\myapp-vs-good.yaml
 
 3. Port-forward Istio ingress and open Kiali:
 ```powershell
-kubectl port-forward -n istio-system svc/istio-ingress 18080:80
+kubectl port-forward -n istio-system svc/istio-ingressgateway 18080:80
 istioctl dashboard kiali
 ```
 
