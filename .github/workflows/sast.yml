@@ -16,12 +16,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect Dockerfiles
+        id: dockerfiles
+        shell: bash
+        run: |
+          if find . -type f \( -name "Dockerfile" -o -name "Dockerfile.*" -o -name "*.Dockerfile" \) | grep -q .; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run Hadolint
+        if: steps.dockerfiles.outputs.found == 'true'
         uses: hadolint/hadolint-action@v3.1.0
         with:
           recursive: true
           failure-threshold: warning
           no-fail: true
+
+      - name: Skip Hadolint (no Dockerfiles found)
+        if: steps.dockerfiles.outputs.found != 'true'
+        run: echo "No Dockerfiles found in repository. Skipping Hadolint."
 
   trivy:
     name: Trivy misconfiguration scan
