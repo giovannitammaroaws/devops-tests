@@ -16,6 +16,33 @@ Lab stack:
 5. Incident 5: NetworkPolicy blocks traffic to app pods (`502 Bad Gateway` from Ingress).
 6. Incident 6: Egress policy layering (deny all + selective allow rules).
 
+## Visual troubleshooting map
+Normal path:
+```text
+Client -> k3d LB -> Ingress -> Service -> Pod
+```
+
+Incident 3 focus (Ingress to Service):
+```text
+Client -> k3d LB -> Ingress -> ❌ Service (wrong backend name/port)
+```
+
+```mermaid
+flowchart LR
+  C[Client] --> LB[k3d Load Balancer :8080]
+  LB --> I[Ingress Traefik]
+  I --> S[Service myapp-stable]
+  S --> P[Pods app=myapp]
+```
+
+```mermaid
+flowchart LR
+  C[Client] --> LB[k3d Load Balancer :8080]
+  LB --> I[Ingress Traefik]
+  I --> X[❌ Wrong service name or port]
+  X -. no healthy backend .-> P[Pods are Running]
+```
+
 ## Incident 1 (Pods not Ready / not starting)
 Start here when pods are in states like `Pending`, `ImagePullBackOff`, `CrashLoopBackOff`, `Error`.
 
