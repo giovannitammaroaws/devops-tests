@@ -43,6 +43,38 @@ flowchart LR
   X -. no healthy backend .-> P[Pods are Running]
 ```
 
+## Incident visual snapshots
+Incident 1 (Pods not Ready / not starting):
+```text
+Client -> k3d LB -> Ingress -> Service -> ❌ Pod (ImagePullBackOff / CrashLoopBackOff / NotReady)
+```
+
+Incident 2 (Pods Running, app unreachable):
+```text
+Client -> k3d LB -> Ingress -> Service -> ❌ Endpoints <none> (selector mismatch)
+```
+
+Incident 3 (Broken Ingress backend):
+```text
+Client -> k3d LB -> Ingress -> ❌ Service ref (wrong backend name/port)
+```
+
+Incident 4 (Ingress class mismatch):
+```text
+Client -> k3d LB -> ❌ Ingress not handled by active controller (wrong ingressClassName)
+```
+
+Incident 5 (NetworkPolicy ingress block):
+```text
+Client -> k3d LB -> Ingress -> Service -> ❌ Pod blocked by NetworkPolicy (502 Bad Gateway)
+```
+
+Incident 6 (NetworkPolicy egress block):
+```text
+Pod (app=myapp) -> ❌ Outbound traffic blocked (deny all egress)
+Pod (app=myapp) -> DNS 53 (allowed) + HTTPS 443 (allowed) after allow policies
+```
+
 ## Incident 1 (Pods not Ready / not starting)
 Start here when pods are in states like `Pending`, `ImagePullBackOff`, `CrashLoopBackOff`, `Error`.
 
