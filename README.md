@@ -112,6 +112,32 @@ k delete netpol deny-all-to-myapp
 curl.exe -i -H "Host: myapp.local" http://localhost:8080
 ```
 
+## CI Note: Trivy Misconfig Failure and Fix
+Trivy failed in CI on `deployments/deployment.yaml` with:
+- `KSV-0014 (HIGH)`: missing `readOnlyRootFilesystem: true`
+- `KSV-0118 (HIGH)`: default/weak `securityContext` at container level
+- `KSV-0118 (HIGH)`: default/weak `securityContext` at pod level
+
+Fix applied in `deployments/deployment.yaml`:
+- pod `securityContext` with `runAsNonRoot: true` and `seccompProfile: RuntimeDefault`
+- container `securityContext`:
+- `runAsNonRoot: true`
+- `runAsUser: 101`
+- `runAsGroup: 101`
+- `allowPrivilegeEscalation: false`
+- `readOnlyRootFilesystem: true`
+- `capabilities.drop: [ALL]`
+- `capabilities.add: [NET_BIND_SERVICE]`
+- writable `emptyDir` mounts for nginx runtime paths:
+- `/var/cache/nginx`
+- `/var/run`
+- `/tmp`
+
+Local pre-push check (same as CI profile):
+```powershell
+docker run --rm -v "${PWD}:/work" -w /work aquasec/trivy:0.69.3 fs --scanners misconfig --severity HIGH,CRITICAL --exit-code 1 .
+```
+
 ## Traffic flow
 `Client -> localhost:8080 -> k3d loadbalancer -> Ingress -> Service -> Pod`
 
