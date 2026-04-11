@@ -28,6 +28,19 @@ jobs:
       - name: Run pre-commit
         run: pre-commit run --all-files
 
+  semgrep:
+    name: Semgrep Kubernetes scan
+    runs-on: ubuntu-latest
+    needs: [precommit]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep (Kubernetes rules)
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: p/kubernetes
+          args: --error
+
   checkov:
     name: Checkov Kubernetes scan
     runs-on: ubuntu-latest
